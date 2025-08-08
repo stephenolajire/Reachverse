@@ -1,213 +1,25 @@
-from django.db import models
-from django.contrib.auth.models import User
-from django.core.validators import MinValueValidator, MaxValueValidator
-from django.core.exceptions import ValidationError
-from decimal import Decimal
-
 class Bus(models.Model):
-    plate_number = models.CharField(
-        max_length=20, 
-        unique=True, 
-        help_text="Unique plate number for the bus"
-    )
-    capacity = models.PositiveIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(100)],
-        help_text="Total seating capacity of the bus"
-    )
-    bus_type = models.CharField(
-        max_length=50,
-        choices=[
-            ('REGULAR', 'Regular'),
-            ('AC', 'Air Conditioned'),
-            ('SLEEPER', 'Sleeper'),
-            ('LUXURY', 'Luxury'),
-        ],
-        default='REGULAR'
-    )
+    plate_number = models.CharField(max_length=20, unique=True)
+    capacity = models.PositiveIntegerField()
+    model = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'buses'
-        ordering = ['plate_number']
-
-    def __str__(self):
-        return f"{self.plate_number} (Capacity: {self.capacity})"
-
 
 class Route(models.Model):
-    route_code = models.CharField(
-        max_length=20, 
-        unique=True, 
-        help_text="Unique code for the route"
-    )
-    from_location = models.CharField(
-        max_length=100,
-        help_text="Departure location"
-    )
-    to_location = models.CharField(
-        max_length=100,
-        help_text="Destination location"
-    )
-    price = models.DecimalField(
-        max_digits=10, 
-        decimal_places=2,
-        validators=[MinValueValidator(Decimal('0.01'))],
-        help_text="Price for this route"
-    )
-    distance_km = models.PositiveIntegerField(
-        null=True, 
-        blank=True,
-        help_text="Distance in kilometers"
-    )
-    estimated_duration = models.DurationField(
-        null=True, 
-        blank=True,
-        help_text="Estimated travel time"
-    )
+    from_location = models.CharField(max_length=100)
+    to_location = models.CharField(max_length=100)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    duration_hours = models.PositiveIntegerField()
+    distance_km = models.PositiveIntegerField()
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'routes'
-        ordering = ['from_location', 'to_location']
-        unique_together = ['from_location', 'to_location']
-
-    def __str__(self):
-        return f"{self.from_location} → {self.to_location} (${self.price})"
-
-
-class BusRoute(models.Model):
-    bus = models.ForeignKey(
-        Bus, 
-        on_delete=models.CASCADE,
-        related_name='bus_routes'
-    )
-    route = models.ForeignKey(
-        Route, 
-        on_delete=models.CASCADE,
-        related_name='bus_routes'
-    )
-    departure_time = models.TimeField(
-        help_text="Scheduled departure time"
-    )
-    arrival_time = models.TimeField(
-        help_text="Scheduled arrival time"
-    )
-    days_of_operation = models.CharField(
-        max_length=20,
-        default='1234567',  # All days of week (1=Monday, 7=Sunday)
-        help_text="Days of operation (1234567 for all days)"
-    )
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'bus_routes'
-        unique_together = ['bus', 'route', 'departure_time']
-        ordering = ['departure_time']
-
-    def __str__(self):
-        return f"{self.bus.plate_number} on {self.route} at {self.departure_time}"
-
 
 class Booking(models.Model):
-    BOOKING_STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
-        ('CONFIRMED', 'Confirmed'),
-        ('CANCELLED', 'Cancelled'),
-        ('COMPLETED', 'Completed'),
-    ]
-
-    booking_reference = models.CharField(
-        max_length=20, 
-        unique=True,
-        help_text="Unique booking reference number"
-    )
-    user = models.ForeignKey(
-        User, 
-        on_delete=models.CASCADE,
-        related_name='bookings',
-        help_text="User who made the booking"
-    )
-    bus_route = models.ForeignKey(
-        BusRoute,
-        on_delete=models.CASCADE,
-        related_name='bookings',
-        help_text="Bus route for this booking"
-    )
-    travel_date = models.DateField(
-        help_text="Date of travel"
-    )
-    seat_number = models.PositiveIntegerField(
-        validators=[MinValueValidator(1)],
-        help_text="Seat number assigned"
-    )
-    passenger_name = models.CharField(
-        max_length=100,
-        help_text="Name of the passenger"
-    )
-    passenger_phone = models.CharField(
-        max_length=20,
-        help_text="Contact number of passenger"
-    )
-    passenger_email = models.EmailField(
-        blank=True, 
-        null=True,
-        help_text="Email of passenger"
-    )
-    booking_status = models.CharField(
-        max_length=20,
-        choices=BOOKING_STATUS_CHOICES,
-        default='PENDING'
-    )
-    total_amount = models.DecimalField(
-        max_digits=10, 
-        decimal_places=2,
-        help_text="Total amount paid for booking"
-    )
-    payment_status = models.CharField(
-        max_length=20,
-        choices=[
-            ('PENDING', 'Pending'),
-            ('PAID', 'Paid'),
-            ('FAILED', 'Failed'),
-            ('REFUNDED', 'Refunded'),
-        ],
-        default='PENDING'
-    )
-    booking_date = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'bookings'
-        ordering = ['-booking_date']
-        unique_together = ['bus_route', 'travel_date', 'seat_number']
-
-    def __str__(self):
-        return f"Booking {self.booking_reference} - {self.passenger_name}"
-
-    def save(self, *args, **kwargs):
-        if not self.booking_reference:
-            import uuid
-            self.booking_reference = f"BK{uuid.uuid4().hex[:8].upper()}"
-        
-        if not self.total_amount:
-            self.total_amount = self.bus_route.route.price
-            
-        super().save(*args, **kwargs)
-        
-        # Check if travel date is in the future
-        from django.utils import timezone
-        if self.travel_date and self.travel_date < timezone.now().date():
-            raise ValidationError("Travel date cannot be in the past")
-
-    @property
-    def bus(self):
-        return self.bus_route.bus
-
-    @property 
-    def route(self):
-        return self.bus_route.route
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    bus = models.ForeignKey(Bus, on_delete=models.CASCADE)
+    route = models.ForeignKey(Route, on_delete=models.CASCADE)
+    booking_date = models.DateField()
+    travel_date = models.DateField()
+    seat_number = models.PositiveIntegerField()
+    booking_status = models.CharField(max_length=20, default='pending')
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
