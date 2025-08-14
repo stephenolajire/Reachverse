@@ -46,7 +46,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
         if password != confirm_password:
             raise serializers.ValidationError("Passwords do not match.")
         
-        # Othr Password validation
+        # Other Password validation
         if len(password) < 8:
             raise serializers.ValidationError("Password must be at least 8 characters long.")
         
