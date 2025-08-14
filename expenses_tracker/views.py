@@ -84,7 +84,6 @@ class LoginView(APIView):
         
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
-    """User profile endpoint"""
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     
